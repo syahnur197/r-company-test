@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=rakuten
+      - POSTGRES_PASSWORD=rakuten
+      - POSTGRES_DATABASE=rakuten
+    ports:
+      - '5555:5432'
+    volumes:
+      - db:/var/lib/postgresql/data
+volumes:
+  db:
+    driver: local
