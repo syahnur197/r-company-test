@@ -6,6 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/syahnur197/rakuten/rakuten"
+	"github.com/syahnur197/rakuten/router"
 	"github.com/syahnur197/rakuten/storage"
 	"log"
 	"net/http"
@@ -66,9 +67,11 @@ func main() {
 	// setting up mux
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/ping", h.Ping)
-	mux.HandleFunc("/rates/analyze", h.GetAnalyzedCurrencyRate)
-	mux.HandleFunc("/rates/", h.GetCurrencyRate)
+	router := router.NewRouter(h)
+
+	mux.HandleFunc("/ping", router.Ping)
+	mux.HandleFunc("/rates/analyze", router.GetAnalyzedCurrencyRate)
+	mux.HandleFunc("/rates/", router.GetCurrencyRate)
 
 	log.Println("listening to port :4000")
 	err = http.ListenAndServe(":4000", mux)

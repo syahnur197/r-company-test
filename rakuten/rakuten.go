@@ -1,11 +1,11 @@
 package rakuten
 
 import (
-	"encoding/json"
+	"context"
 	"encoding/xml"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/syahnur197/rakuten/storage"
@@ -15,48 +15,29 @@ type Handler struct {
 	Storage storage.RakutenStore
 }
 
-func NewHandler(s storage.RakutenStore) Handler {
-	return Handler{
+func NewHandler(s storage.RakutenStore) *Handler {
+	return &Handler{
 		Storage: s,
 	}
 }
 
-func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"ping": "pong"}`))
+type GetCurrencyRateRequest struct {
+	GetLatestDate bool
+	Date          time.Time
 }
 
-func (h *Handler) GetCurrencyRate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	w.Header().Set("Content-Type", "application/json")
-	date := strings.TrimPrefix(r.URL.Path, "/rates/")
-
+func (h *Handler) GetCurrencyRate(ctx context.Context, req *GetCurrencyRateRequest) (*CurrencyRatesResponse, error) {
 	filter := storage.CurrencyFilter{}
-	if date == "" {
-		notFound(w)
-		return
-	} else if date == "latest" {
-		filter.GetLatestDate = true
-	} else {
-		t, err := time.Parse("2006-01-02", date)
-		if err != nil {
-			notFound(w)
-			return
-		}
 
-		filter.Date = t
+	if req.GetLatestDate {
+		filter.GetLatestDate = true
+	} else if !req.Date.IsZero() {
+		filter.Date = req.Date
 	}
 
 	rates, err := h.Storage.GetCurrencyRates(ctx, filter)
 	if err != nil {
-		internalError(w)
-		return
-	}
-
-	if len(rates) == 0 {
-		notFound(w)
-		return
+		return nil, err
 	}
 
 	rateResponse := CurrencyRatesResponse{Base: "EUR", Rates: map[string]string{}}
@@ -64,28 +45,16 @@ func (h *Handler) GetCurrencyRate(w http.ResponseWriter, r *http.Request) {
 		rateResponse.Rates[rate.Quote] = rate.Rate
 	}
 
-	ratesResponseJson, err := json.Marshal(rateResponse)
-	if err != nil {
-		panic(err)
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(ratesResponseJson)
+	return &rateResponse, nil
 }
 
-func (h *Handler) GetAnalyzedCurrencyRate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	w.Header().Set("Content-Type", "application/json")
-
+func (h *Handler) GetAnalyzedCurrencyRate(ctx context.Context) (*AnalyzedRatesResponse, error) {
 	rates, err := h.Storage.GetAnalyzedCurrencyRates(ctx)
 	if err != nil {
-		internalError(w)
-		return
+		return nil, err
 	}
-
 	if len(rates) == 0 {
-		notFound(w)
-		return
+		return nil, errors.Wrap(err, "zero rates")
 	}
 
 	rateResponse := AnalyzedRatesResponse{Base: "EUR", RatesAnalyzed: map[string]AnalyzedRate{}}
@@ -97,13 +66,7 @@ func (h *Handler) GetAnalyzedCurrencyRate(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	ratesResponseJson, err := json.Marshal(rateResponse)
-	if err != nil {
-		panic(err)
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(ratesResponseJson)
+	return &rateResponse, nil
 }
 
 func FetchCurrencyRates() (Rates, error) {
@@ -129,10 +92,6 @@ func FetchCurrencyRates() (Rates, error) {
 	return v, nil
 }
 
-type ErrorResponse struct {
-	Message string `json:"message"`
-}
-
 type CurrencyRatesResponse struct {
 	Base  string            `json:"base"`
 	Rates map[string]string `json:"rates"`
@@ -147,32 +106,4 @@ type AnalyzedRate struct {
 type AnalyzedRatesResponse struct {
 	Base          string                  `json:"base"`
 	RatesAnalyzed map[string]AnalyzedRate `json:"rates_analyze"`
-}
-
-func notFound(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusNotFound)
-
-	response := ErrorResponse{
-		Message: "not found",
-	}
-
-	responseJson, err := json.Marshal(response)
-	if err != nil {
-		panic(err)
-	}
-	w.Write(responseJson)
-}
-
-func internalError(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusInternalServerError)
-
-	response := ErrorResponse{
-		Message: "internal server error",
-	}
-
-	responseJson, err := json.Marshal(response)
-	if err != nil {
-		panic(err)
-	}
-	w.Write(responseJson)
 }
