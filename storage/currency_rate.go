@@ -38,9 +38,9 @@ const (
 		SELECT 
 			base, 
 			quote, 
-			TRIM(TRAILING '0' FROM CAST(MIN(rate) AS TEXT)) as min, 
-			TRIM(TRAILING '0' FROM CAST(MAX(rate) AS TEXT)) as max, 
-			AVG(rate) as avg
+			TRIM(TRAILING '.' FROM (TRIM(TRAILING '0' FROM CAST(MIN(rate) AS TEXT)))) as min, 
+			TRIM(TRAILING '.' FROM (TRIM(TRAILING '0' FROM CAST(MAX(rate) AS TEXT)))) as max, 
+			TRIM(TRAILING '.' FROM (TRIM(TRAILING '0' FROM CAST(AVG(rate) AS TEXT)))) as avg
 		FROM currency_rate
 		GROUP BY base, quote
 	`

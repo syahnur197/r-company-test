@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"github.com/syahnur197/rakuten/storage"
 	"io"
+	"time"
 )
 
 type Rate struct {
@@ -42,11 +43,17 @@ func (ls *RateList) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	}
 }
 
-func ConvertToStoreRate(rate Rate) storage.Rate {
+func ConvertToStoreRate(rate Rate) (storage.Rate, error) {
+	// ideally we want to handle the error
+	date, err := time.Parse("2006-01-02", rate.Date)
+	if err != nil {
+		return storage.Rate{}, err
+	}
+
 	return storage.Rate{
 		Base:  rate.Base,
 		Quote: rate.Quote,
 		Rate:  rate.Rate,
-		Date:  rate.Date,
-	}
+		Date:  date,
+	}, nil
 }

@@ -1,5 +1,22 @@
 version: '3.8'
 services:
+  app:
+    build: .
+    image: rakuten
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      - DB_PORT=5432
+      - DB_HOST=db
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:4000/ping"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+    depends_on:
+      - db
+
   db:
     image: postgres:14.1-alpine
     restart: always
@@ -11,6 +28,25 @@ services:
       - '5555:5432'
     volumes:
       - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-test:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=rakuten
+      - POSTGRES_PASSWORD=rakuten
+      - POSTGRES_DATABASE=rakuten
+    ports:
+      - '6666:5432'
+    volumes:
+      - db-test:/var/lib/postgresql/data
 volumes:
   db:
+    driver: local
+  db-test:
     driver: local

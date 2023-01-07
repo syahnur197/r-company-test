@@ -2,10 +2,12 @@ package router
 
 import (
 	"encoding/json"
-	"github.com/syahnur197/rakuten/rakuten"
+	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/syahnur197/rakuten/rakuten"
 )
 
 type Router struct {
@@ -16,13 +18,13 @@ func NewRouter(h *rakuten.Handler) *Router {
 	return &Router{H: h}
 }
 
-func (router *Router) Ping(w http.ResponseWriter, r *http.Request) {
+func (rtr *Router) Ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"ping": "pong"}`))
 }
 
-func (router *Router) GetCurrencyRate(w http.ResponseWriter, r *http.Request) {
+func (rtr *Router) GetCurrencyRate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 	date := strings.TrimPrefix(r.URL.Path, "/rates/")
@@ -35,39 +37,49 @@ func (router *Router) GetCurrencyRate(w http.ResponseWriter, r *http.Request) {
 	} else if date == "latest" {
 		req.GetLatestDate = true
 	} else {
+		// validate date format
 		t, err := time.Parse("2006-01-02", date)
 		if err != nil {
-			notFound(w)
+			badRequest(w, "invalid date format, must be YYYY-MM-DD")
 			return
 		}
 
 		req.Date = t
 	}
 
-	rates, err := router.H.GetCurrencyRate(ctx, req)
-
-	ratesResponseJson, err := json.Marshal(rates)
+	rates, err := rtr.H.GetCurrencyRate(ctx, req)
 	if err != nil {
-		panic(err)
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(ratesResponseJson)
-}
-
-func (router *Router) GetAnalyzedCurrencyRate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	w.Header().Set("Content-Type", "application/json")
-
-	rates, err := router.H.GetAnalyzedCurrencyRate(ctx)
-	if err != nil {
+		log.Println("failed to obtained currency rates")
 		internalError(w)
 		return
 	}
 
 	ratesResponseJson, err := json.Marshal(rates)
 	if err != nil {
-		panic(err)
+		log.Println("failed to marshal rates")
+		internalError(w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(ratesResponseJson)
+}
+
+func (rtr *Router) GetAnalyzedCurrencyRate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	w.Header().Set("Content-Type", "application/json")
+
+	rates, err := rtr.H.GetAnalyzedCurrencyRate(ctx)
+	if err != nil {
+		log.Println("failed to obtained analyzed currency rates")
+		internalError(w)
+		return
+	}
+
+	ratesResponseJson, err := json.Marshal(rates)
+	if err != nil {
+		log.Println("failed to marshal analyzed rates")
+		internalError(w)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -87,6 +99,7 @@ func notFound(w http.ResponseWriter) {
 
 	responseJson, err := json.Marshal(response)
 	if err != nil {
+		// shouldn't happen
 		panic(err)
 	}
 	w.Write(responseJson)
@@ -101,6 +114,26 @@ func internalError(w http.ResponseWriter) {
 
 	responseJson, err := json.Marshal(response)
 	if err != nil {
+		// shouldn't happen
+		panic(err)
+	}
+	w.Write(responseJson)
+}
+
+func badRequest(w http.ResponseWriter, message string) {
+	w.WriteHeader(http.StatusBadRequest)
+
+	if message == "" {
+		message = "bad request"
+	}
+
+	response := ErrorResponse{
+		Message: message,
+	}
+
+	responseJson, err := json.Marshal(response)
+	if err != nil {
+		// shouldn't happen
 		panic(err)
 	}
 	w.Write(responseJson)

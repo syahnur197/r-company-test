@@ -9,10 +9,10 @@ import (
 )
 
 type Rate struct {
-	Base  string `db:"base"`
-	Quote string `db:"quote"`
-	Rate  string `db:"rate"`
-	Date  string `db:"published_date"`
+	Base  string    `db:"base"`
+	Quote string    `db:"quote"`
+	Rate  string    `db:"rate"`
+	Date  time.Time `db:"published_date"`
 }
 
 type AnalyzedRate struct {

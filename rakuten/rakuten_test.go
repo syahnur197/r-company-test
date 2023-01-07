@@ -57,13 +57,13 @@ func TestHandler_GetCurrencyRate(t *testing.T) {
 			Base:  "EUR",
 			Quote: "AUD",
 			Rate:  "123",
-			Date:  time.Now().Format("2006-01-02"),
+			Date:  time.Now(),
 		},
 		{
 			Base:  "EUR",
 			Quote: "BND",
 			Rate:  "123",
-			Date:  time.Now().Format("2006-01-02"),
+			Date:  time.Now(),
 		},
 	}
 
